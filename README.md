@@ -8,7 +8,7 @@ An automatic Warp node switching tool (自动切换warp节点的工具) that all
 
 2.  **Verify Wireguard Installation (验证Wireguard安装):** Open your command prompt or terminal and type `wireguard`. If the Wireguard client interface appears, you're good to go. (在控制台运行```wireguard```，若弹出wireguard客户端即可)
 
-3.  **Start Easywarp (开始Easywarp):** Open your command prompt or terminal and navigate to the directory where you have `easywarp.py`. Then, run the following command:
+3.  **Start Easywarp (开始Easywarp):** Run the following command:
 
     ```bash
     easywarp start
