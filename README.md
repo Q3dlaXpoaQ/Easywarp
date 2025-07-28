@@ -32,3 +32,9 @@ An automatic Warp node switching tool (自动切换warp节点的工具) that all
 ### Tips (提示)
 
 *   **Empty Log Output (log指令后输出为empty):** If the `python easywarp.py log` command returns "empty", try running the command prompt or terminal as an administrator. This can resolve permission issues that might prevent the script from accessing the necessary logs. (若运行log指令后输出为empty，可尝试以管理员身份运行)
+
+
+
+## About warp.exe
+ https://github.com/yonggekkk/warp-yg 
+ It is very safe.
