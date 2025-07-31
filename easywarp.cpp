@@ -303,14 +303,18 @@ void background_worker() {
         std::ofstream(config_path) << create_config_content(endpoint);
 
         run_command("wireguard /installtunnelservice " + config_path.string());
-        Sleep(3800);
+        Sleep(3200);
 
         if (check_connection_status(tunnel_name) == "connected") {
             auto now = std::chrono::system_clock::now();
             std::time_t now_c = std::chrono::system_clock::to_time_t(now);
             std::cout << "✅ (" << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S") << ") Connection successful with: " << endpoint << std::endl;
+            
+            fs::path current_endpoint_file = config_dir / "current_endpoint.txt";
+            std::ofstream(current_endpoint_file) << endpoint;
+
             while (true) {
-                Sleep(13000);
+                Sleep(10000);
                 if (check_connection_status(tunnel_name) == "failed") {
                     auto now = std::chrono::system_clock::now();
                     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
@@ -327,6 +331,29 @@ void background_worker() {
         std::cout << "❌ (" << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S") << ") Connection failed for " << endpoint << "." << std::endl;
             remove_endpoint_from_csv(csv_path, endpoint);
         }
+    }
+}
+
+void internal_stop_logic() {
+    fs::path config_dir = fs::path(getenv("USERPROFILE")) / ".easywarp";
+    fs::path tunnel_name = (config_dir / "config.conf").stem();
+    fs::path pid_file = config_dir / "easywarp.pid";
+    fs::path current_endpoint_file = config_dir / "current_endpoint.txt";
+
+    run_command("wireguard /uninstalltunnelservice " + tunnel_name.string());
+    Sleep(1500);
+
+    if (fs::exists(pid_file)) {
+        std::ifstream pid_in(pid_file);
+        std::string pid_str;
+        pid_in >> pid_str;
+        if (!pid_str.empty()) {
+            run_command("taskkill /F /PID " + pid_str);
+        }
+        Sleep(1000);
+    }
+    if (fs::exists(current_endpoint_file)) {
+        fs::remove(current_endpoint_file);
     }
 }
 
@@ -365,8 +392,6 @@ void start_easywarp() {
 
 void stop_easywarp() {
     fs::path config_dir = fs::path(getenv("USERPROFILE")) / ".easywarp";
-    fs::path tunnel_name = (config_dir / "config.conf").stem();
-    fs::path pid_file = config_dir / "easywarp.pid";
     fs::path log_file = config_dir / "easywarp.log";
 
     // Redirect cout and cerr to log file
@@ -376,16 +401,7 @@ void stop_easywarp() {
     std::streambuf* cerr_buf = std::cerr.rdbuf();
     std::cerr.rdbuf(log_stream.rdbuf());
 
-    run_command("wireguard /uninstalltunnelservice " + tunnel_name.string());
-    Sleep(1500); // Give WireGuard more time to uninstall
-
-    if (fs::exists(pid_file)) {
-        std::ifstream pid_in(pid_file);
-        std::string pid_str;
-        pid_in >> pid_str;
-        run_command("taskkill /F /PID " + pid_str);
-        Sleep(1000); // Give OS time to release file handle
-    }
+    internal_stop_logic();
     std::cout << "Easywarp quit successfully" << std::endl;
 
     // Close the log stream explicitly before restoring original buffers
@@ -407,11 +423,57 @@ void show_log() {
     std::cout << log_in.rdbuf();
 }
 
+void next_node() {
+    fs::path config_dir = fs::path(getenv("USERPROFILE")) / ".easywarp";
+    fs::path pid_file = config_dir / "easywarp.pid";
+
+    if (!fs::exists(pid_file)) {
+        std::cout << "easywarp is not running" << std::endl;
+        return;
+    }
+
+    std::ifstream pid_in(pid_file);
+    std::string pid_str;
+    pid_in >> pid_str;
+    pid_in.close();
+
+    if (pid_str.empty() || !is_process_running(pid_str)) {
+        std::cout << "easywarp is not running" << std::endl;
+        if(fs::exists(pid_file)) fs::remove(pid_file);
+        return;
+    }
+
+    std::cout << "Switching to the next node..." << std::endl;
+
+    fs::path csv_path = config_dir / "result.csv";
+    fs::path current_endpoint_file = config_dir / "current_endpoint.txt";
+    std::string endpoint_to_remove;
+
+    if (fs::exists(current_endpoint_file)) {
+        std::ifstream endpoint_in(current_endpoint_file);
+        endpoint_in >> endpoint_to_remove;
+    }
+
+    // Stop the current process
+    internal_stop_logic();
+
+    // Remove the old endpoint from the list
+    if (!endpoint_to_remove.empty()) {
+        std::cout << "Removing previous endpoint from list: " << endpoint_to_remove << std::endl;
+        remove_endpoint_from_csv(csv_path, endpoint_to_remove);
+    }
+
+    // Start a new process
+    std::cout << "Restarting easywarp..." << std::endl;
+    start_easywarp();
+    std::cout << "Easywarp restarted. Check log for new connection status." << std::endl;
+}
+
 
 int main(int argc, char* argv[]) {
     SetConsoleOutputCP(CP_UTF8);
     if (argc < 2) {
-        std::cerr << "Usage: easywarp [start|stop|log]" << std::endl;
+        std::cerr << "Usage: easywarp [start|stop|log|update|next]" << std::endl;
         return 1;
     }
 
@@ -420,7 +482,7 @@ int main(int argc, char* argv[]) {
         c = tolower(c);
     }
 
-    if (command == "start" || command == "stop" || command == "start-background") {
+    if (command == "start" || command == "stop" || command == "start-background" || command == "update" || command == "next") {
         if (!is_admin()) {
             run_as_admin(argc, argv);
             return 0;
@@ -435,9 +497,17 @@ int main(int argc, char* argv[]) {
         stop_easywarp();
     } else if (command == "log") {
         show_log();
-    } else {
+    } else if (command == "update") {
+        fs::path script_dir = fs::current_path();
+        fs::path config_dir = fs::path(getenv("USERPROFILE")) / ".easywarp";
+        fs::create_directories(config_dir);
+        run_ip_scan(script_dir, config_dir);
+    } else if (command == "next") {
+        next_node();
+    }
+    else {
         std::cerr << "Unknown command: " << command << std::endl;
-        std::cerr << "Usage: easywarp [start|stop|log]" << std::endl;
+        std::cerr << "Usage: easywarp [start|stop|log|update|next]" << std::endl;
         return 1;
     }
 
