@@ -253,6 +253,10 @@ std::string check_connection_status(const std::string& tunnel_name) {
 }
 
 void background_worker() {
+    wchar_t exe_path_ws[MAX_PATH];
+    GetModuleFileNameW(NULL, exe_path_ws, MAX_PATH);
+    fs::path exe_dir = fs::path(exe_path_ws).parent_path();
+
     fs::path config_dir = fs::path(getenv("USERPROFILE")) / ".easywarp";
     fs::create_directories(config_dir);
     fs::path log_file = config_dir / "easywarp.log";
@@ -279,18 +283,19 @@ void background_worker() {
 
     if (!fs::exists(csv_path)) {
         std::cout << "'result.csv' not found. Running IP scan..." << std::endl;
-        run_ip_scan(fs::current_path(), config_dir);
+        run_ip_scan(exe_dir, config_dir);
     }
 
     while (true) {
         auto endpoints = get_endpoints(csv_path);
         if (endpoints.empty()) {
             std::cout << "\n--- No viable endpoints found. Triggering a new IP scan. ---" << std::endl;
-            run_ip_scan(fs::current_path(), config_dir);
+            run_ip_scan(exe_dir, config_dir);
             std::cout << "✅ IP scan completed successfully." << std::endl;
             Sleep(17000);
             continue;
         }
+
 
         std::string endpoint = endpoints[0];
         auto now = std::chrono::system_clock::now();        
@@ -498,7 +503,9 @@ int main(int argc, char* argv[]) {
     } else if (command == "log") {
         show_log();
     } else if (command == "update") {
-        fs::path script_dir = fs::current_path();
+        wchar_t exe_path_ws[MAX_PATH];
+        GetModuleFileNameW(NULL, exe_path_ws, MAX_PATH);
+        fs::path script_dir = fs::path(exe_path_ws).parent_path();
         fs::path config_dir = fs::path(getenv("USERPROFILE")) / ".easywarp";
         fs::create_directories(config_dir);
         run_ip_scan(script_dir, config_dir);
