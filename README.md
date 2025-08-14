@@ -11,35 +11,35 @@ An automatic Warp node switching tool (自动切换warp节点的工具) that all
 3.  **Start Easywarp (开始Easywarp):** Run the following command:
 
     ```bash
-    easywarp start
+    ezwarpw start
     ```
     *   **First Run (第一次运行):** The first time you run this, the script might need to filter and select suitable Warp nodes. Please be patient, as this process can take some time. (第一次运行可能要筛选脚本，请耐心等待)
 
 4.  **Check the Logs (查看运行情况):** To view the running status and any potential errors, use the following command:
 
     ```bash
-    easywarp log
+    ezwarpw log
     ```
-    (可输入```easywarp log```查看运行情况)
+    (可输入```ezwarpw log```查看运行情况)
 
 6.  **Stop Easywarp (停止Easywarp):** If you encounter errors or want to stop the script, use the following command:
 
     ```bash
-    easywarp stop
+    ezwarpw stop
     ```
-    (若有报错，运行```easywarp stop```可自动暂停)
+    (若有报错，运行```ezwarpw stop```可自动暂停)
 
 7. **Update Warp nodes(更新节点):** If you want to update the result.csv, use the folling command:
    ```bash
-   easywarp update
+   ezwarpw update
    ```
-   (若要更新节点池，运行```easywarp update```可以自动更新)
+   (若要更新节点池，运行```ezwarpw update```可以自动更新)
 
 8. **Switch nodes:** If you think the node is too slow, use the folling command:
    ```bash
-   easywarp next
+   ezwarpw next
    ```
-   (如果觉得节点速度不佳，运行```easywarp next```可自动切换节点)
+   (如果觉得节点速度不佳，运行```ezwarpw next```可自动切换节点)
 
 
 
