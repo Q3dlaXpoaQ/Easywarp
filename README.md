@@ -47,5 +47,4 @@ An automatic Warp node switching tool (自动切换warp节点的工具) that all
 
 
 ## About warp.exe
- https://github.com/yonggekkk/warp-yg 
- It is very safe.
+It is provided by Cloudflare
